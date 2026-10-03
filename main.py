@@ -1,29 +1,33 @@
 import json
+from collections import Counter
+
 from moderator import moderate_text
+
+ICONS = {"APPROVED": "✅", "FLAGGED": "⚠️", "REJECTED": "❌"}
+
 
 def load_content(filename):
     with open(filename, "r") as file:
-        lines = [line.strip() for line in file if line.strip()]
-    return lines
+        return [line.strip() for line in file if line.strip()]
 
-def run_moderation(filename="sample_content.txt"):
-    content_list = load_content(filename)
-    results = []
 
-    for text in content_list:
-        result = moderate_text(text)
-        results.append(result)
+def run_moderation(filename="sample_content.txt", report="report.json"):
+    results = [moderate_text(text) for text in load_content(filename)]
 
-        icon = "✅" if result["status"] == "APPROVED" else "⚠️" if result["status"] == "FLAGGED" else "❌"
-        print(f"{icon} {result['status']} - \"{text}\"")
+    for result in results:
+        print(f"{ICONS[result['status']]} {result['status']} - \"{result['text']}\"")
         if result["reasons"]:
-            print(f"   Reasons: {', '.join(result['reasons'])}")
+            print(f"   Reasons: {'; '.join(result['reasons'])}")
 
-    with open("report.json", "w") as report_file:
-        json.dump(results, report_file, indent=2)
+    summary = Counter(r["status"] for r in results)
+    with open(report, "w") as report_file:
+        json.dump({"summary": dict(summary), "results": results}, report_file, indent=2)
 
-    print("\n📄 Report saved to report.json")
+    print(f"\nApproved: {summary['APPROVED']} | Flagged: {summary['FLAGGED']} | "
+          f"Rejected: {summary['REJECTED']}")
+    print(f"📄 Report saved to {report}")
+    return results
+
 
 if __name__ == "__main__":
     run_moderation()
-    
